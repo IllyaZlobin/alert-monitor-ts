@@ -3,6 +3,7 @@ import { Module } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { LoggerModule } from 'nestjs-pino';
+import { TelegrafModule } from 'nestjs-telegraf';
 
 import { BotModule } from '~/bot/bot.module';
 import { ConfigModule } from '~/config/config.module';
@@ -10,10 +11,18 @@ import { IConfig } from '~/config/types';
 import { ENTITIES } from '~/database';
 import { MonitorModule } from '~/monitor/monitor.module';
 import { QueueModule } from '~/queue/queue.module';
+import { SchedulerModule } from '~/scheduler/scheduler.module';
 
 @Module({
   imports: [
     LoggerModule.forRoot({ pinoHttp: { autoLogging: false } }),
+    TelegrafModule.forRootAsync({
+      useFactory: (configService: ConfigService<IConfig, true>) => ({
+        token: configService.get('telegram.botToken', { infer: true })
+      }),
+      imports: [ConfigModule],
+      inject: [ConfigService]
+    }),
     BullModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
@@ -41,7 +50,8 @@ import { QueueModule } from '~/queue/queue.module';
     ConfigModule,
     BotModule,
     MonitorModule,
-    QueueModule
+    QueueModule,
+    SchedulerModule
   ],
   controllers: [],
   providers: []

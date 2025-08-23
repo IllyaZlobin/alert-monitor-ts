@@ -27,7 +27,17 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+  redisinsight:
+    image: redislabs/redisinsight:latest
+    container_name: redisinsight_ui
+    ports:
+      - "5540:5540"
+    volumes:
+      - redisinsight_data:/db
+    depends_on:
+      - redis
 
 volumes:
   postgres_data:
   redis_data:
+  redisinsight_data:

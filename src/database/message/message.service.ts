@@ -71,6 +71,15 @@ export class MessageService {
     });
   }
 
+  async getUnprocessedMessageById(messageId: string): Promise<MessageEntity | null> {
+    return this.messageRepository.findOne({
+      where: {
+        id: messageId,
+        processedAt: IsNull()
+      }
+    });
+  }
+
   async markAsProcessed(messageIds: string[]): Promise<void> {
     if (messageIds.length === 0) {
       return;

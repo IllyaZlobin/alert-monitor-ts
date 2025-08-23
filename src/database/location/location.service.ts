@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import _ from 'lodash';
 import { Repository } from 'typeorm';
 
 import { LocationEntity, UserEntity } from '~/database/entities';
@@ -95,6 +96,26 @@ export class LocationService {
     user.locations = user.locations.filter((loc) => loc.id !== locationId);
     await this.userRepository.save(user);
     return;
+  }
+
+  async getAllUserLocationMappings(): Promise<Array<{ userId: number; locationName: string; telegramId: number }>> {
+    const users = await this.userRepository.find({
+      relations: ['locations']
+    });
+    const mappings: Array<{ userId: number; locationName: string; telegramId: number }> = [];
+    users.forEach((user) => {
+      if (user.locations && user.locations.length > 0) {
+        user.locations.forEach((location) => {
+          mappings.push({
+            userId: user.id,
+            locationName: location.name,
+            telegramId: user.telegramId
+          });
+        });
+      }
+    });
+
+    return mappings;
   }
 }
 

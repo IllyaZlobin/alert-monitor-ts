@@ -5,14 +5,15 @@ export class UserEntity {
   @PrimaryGeneratedColumn('uuid')
   id: number;
 
-  @Column({ type: 'bigint', unique: true })
+  @Column({ type: 'bigint', unique: true, name: 'telegram_id' })
+  @Index()
   telegramId: number;
 
-  @Column({ type: 'varchar' })
+  @Column({ type: 'varchar', name: 'first_name' })
   @Index()
   firstName: string;
 
-  @Column({ type: 'varchar', nullable: true })
+  @Column({ type: 'varchar', name: 'last_name', nullable: true })
   lastName: string | null;
 
   @Column({ type: 'varchar', nullable: true })

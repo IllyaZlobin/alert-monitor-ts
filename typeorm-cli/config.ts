@@ -34,7 +34,7 @@ async function getConfig() {
     ...databaseConfig,
     type: 'postgres',
     host,
-    applicationName: 'producer',
+    applicationName: 'alert-bot',
     installExtensions: true,
     entities: ['src/database/entities/*.ts'],
     migrations: ['migrations/*.ts'],

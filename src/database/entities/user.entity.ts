@@ -1,4 +1,15 @@
-import { Column, Entity, Index, PrimaryGeneratedColumn } from 'typeorm';
+import {
+  Column,
+  CreateDateColumn,
+  Entity,
+  Index,
+  JoinTable,
+  ManyToMany,
+  PrimaryGeneratedColumn,
+  UpdateDateColumn
+} from 'typeorm';
+
+import { LocationEntity } from './location.entity';
 
 @Entity('users')
 export class UserEntity {
@@ -18,4 +29,24 @@ export class UserEntity {
 
   @Column({ type: 'varchar', nullable: true })
   username: string | null;
+
+  @ManyToMany(() => LocationEntity)
+  @JoinTable({
+    name: 'users_locations',
+    joinColumn: {
+      name: 'user_id',
+      referencedColumnName: 'id'
+    },
+    inverseJoinColumn: {
+      name: 'location_id',
+      referencedColumnName: 'id'
+    }
+  })
+  locations: LocationEntity[];
+
+  @CreateDateColumn({ type: 'timestamptz', name: 'created_at' })
+  createdAt: Date;
+
+  @UpdateDateColumn({ type: 'timestamptz', name: 'updated_at' })
+  updatedAt: Date;
 }

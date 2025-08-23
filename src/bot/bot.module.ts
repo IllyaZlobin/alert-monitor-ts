@@ -7,6 +7,7 @@ import { UpdateProvider } from '~/bot/update.provider';
 import { ConfigModule } from '~/config/config.module';
 import { IConfig } from '~/config/types';
 import { UserEntity } from '~/database/entities';
+import { LocationModule } from '~/database/location/location.module';
 
 @Module({
   imports: [
@@ -17,7 +18,8 @@ import { UserEntity } from '~/database/entities';
       imports: [ConfigModule],
       inject: [ConfigService]
     }),
-    TypeOrmModule.forFeature([UserEntity])
+    TypeOrmModule.forFeature([UserEntity]),
+    LocationModule
   ],
   providers: [UpdateProvider]
 })

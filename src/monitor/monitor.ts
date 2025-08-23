@@ -1,12 +1,18 @@
 import { HttpService } from '@nestjs/axios';
+import { InjectQueue } from '@nestjs/bullmq';
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { AxiosError, isAxiosError } from 'axios';
+import { Queue } from 'bullmq';
 import * as cheerio from 'cheerio';
+import { InjectBot } from 'nestjs-telegraf';
 import { catchError, firstValueFrom } from 'rxjs';
+import { Context, Telegraf } from 'telegraf';
 
 import { IConfig } from '~/config/types';
+import { MessageService } from '~/database/message/message.service';
 import { TelegramMessage } from '~/monitor/types';
+import { MESSAGE_PROCESSING_QUEUE } from '~/queue/constants';
 
 @Injectable()
 export class Monitor {
@@ -23,8 +29,11 @@ export class Monitor {
   };
 
   constructor(
+    @InjectBot() private readonly bot: Telegraf<Context>,
     private readonly configService: ConfigService<IConfig, true>,
-    private readonly httpService: HttpService
+    private readonly httpService: HttpService,
+    private readonly messageService: MessageService,
+    @InjectQueue(MESSAGE_PROCESSING_QUEUE.name) private readonly messageQueue: Queue
   ) {
     this.httpService.axiosRef.defaults.headers.common = this.headers;
   }
@@ -39,7 +48,7 @@ export class Monitor {
       const response = await firstValueFrom(
         this.httpService.get(urlWithParams).pipe(
           catchError((err: AxiosError) => {
-            console.error(err);
+            this.logger.error('Error with retrieving messages from public alert group', err);
             throw new Error("Can't get channel messages");
           })
         )
@@ -80,7 +89,6 @@ export class Monitor {
             timeElem = $block.find('.tgme_widget_message_meta').first();
           }
           const messageTime = timeElem.attr('datetime') || '';
-
           if (messageId && messageText) {
             messages.push({
               id: messageId,
@@ -102,6 +110,55 @@ export class Monitor {
         console.error(`URL: ${error.response?.config?.baseURL}`);
       }
       return [];
+    }
+  }
+
+  async parseAndProcessMessages(): Promise<void> {
+    try {
+      const telegramMessages = await this.getChannelMessages();
+      if (telegramMessages.length === 0) {
+        this.logger.log('No new messages found');
+        return;
+      }
+
+      const savedMessages = await this.messageService.saveMessages(telegramMessages);
+      if (savedMessages.length === 0) {
+        this.logger.log('All messages were saved before');
+        return;
+      }
+
+      this.logger.log(`Save ${savedMessages.length} new messages`);
+
+      for (const message of savedMessages) {
+        await this.messageQueue.add(
+          MESSAGE_PROCESSING_QUEUE.jobName,
+          { messageId: message.id },
+          {
+            priority: 10, // High priority
+            attempts: 3,
+            backoff: {
+              type: 'exponential',
+              delay: 2000
+            }
+          }
+        );
+      }
+
+      this.logger.log(`Added ${savedMessages.length} tasks to the queue for processing`);
+    } catch (error) {
+      this.logger.error('Error parsing and processing messages:', error);
+      throw error;
+    }
+  }
+
+  async cleanupOldMessages(): Promise<void> {
+    try {
+      const deletedCount = await this.messageService.cleanupOldMessages();
+      if (deletedCount > 0) {
+        this.logger.log(`Automatically deleted ${deletedCount} old messages`);
+      }
+    } catch (error) {
+      this.logger.error('Error cleaning up old messages:', error);
     }
   }
 }

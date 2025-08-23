@@ -1,11 +1,22 @@
 import { HttpModule } from '@nestjs/axios';
+import { BullModule } from '@nestjs/bullmq';
 import { Module } from '@nestjs/common';
 
+import { MessageModule } from '~/database/message/message.module';
 import { Monitor } from '~/monitor/monitor';
+import { MonitorController } from '~/monitor/monitor.controller';
+import { MESSAGE_PROCESSING_QUEUE } from '~/queue/constants';
 
 @Module({
-  imports: [HttpModule],
-  controllers: [],
-  providers: [Monitor]
+  imports: [
+    HttpModule,
+    MessageModule,
+    BullModule.registerQueue({
+      name: MESSAGE_PROCESSING_QUEUE.name
+    })
+  ],
+  controllers: [MonitorController],
+  providers: [Monitor],
+  exports: [Monitor]
 })
 export class MonitorModule {}

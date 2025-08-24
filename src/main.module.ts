@@ -9,6 +9,7 @@ import { BotModule } from '~/bot/bot.module';
 import { ConfigModule } from '~/config/config.module';
 import { IConfig } from '~/config/types';
 import { ENTITIES } from '~/database';
+import { HealthController } from '~/health/health.controller';
 import { MonitorModule } from '~/monitor/monitor.module';
 import { QueueModule } from '~/queue/queue.module';
 import { SchedulerModule } from '~/scheduler/scheduler.module';
@@ -53,7 +54,7 @@ import { SchedulerModule } from '~/scheduler/scheduler.module';
     QueueModule,
     SchedulerModule
   ],
-  controllers: [],
+  controllers: [HealthController],
   providers: []
 })
 export class MainModule {}

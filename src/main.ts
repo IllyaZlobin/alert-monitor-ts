@@ -16,6 +16,7 @@ async function bootstrap() {
 
   const appConfig = configService.get('app', { infer: true });
 
+  app.setGlobalPrefix('api');
   app.enableCors();
   app.enableShutdownHooks();
 

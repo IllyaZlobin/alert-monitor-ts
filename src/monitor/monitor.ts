@@ -139,7 +139,9 @@ export class Monitor {
             backoff: {
               type: 'exponential',
               delay: 2000
-            }
+            },
+            removeOnComplete: 50,
+            removeOnFail: 10
           }
         );
       }

@@ -51,6 +51,7 @@ jobs:
           cat > .env.production << EOF
           APP_PORT=3000
           APP_ENV=production
+          APP_USER_LOCATION_LIMIT=${{ secrets.APP_USER_LOCATION_LIMIT }}
           NODE_ENV=production
           DATABASE_HOST=alert-monitor-postgres
           DATABASE_PORT=5432
@@ -90,6 +91,7 @@ jobs:
           cat > .env.production << EOF
           APP_PORT=3000
           APP_ENV=production
+          APP_USER_LOCATION_LIMIT=${{ secrets.APP_USER_LOCATION_LIMIT }}
           NODE_ENV=production
           DATABASE_HOST=alert-monitor-postgres
           DATABASE_PORT=5432

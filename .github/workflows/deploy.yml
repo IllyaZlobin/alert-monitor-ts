@@ -28,7 +28,7 @@ jobs:
   build:
     name: 🏗️ Build & Test
     runs-on: ubuntu-latest
-    
+
     steps:
       - name: 📥 Checkout Code
         uses: actions/checkout@v4
@@ -62,11 +62,11 @@ jobs:
     permissions:
       contents: read
       packages: write
-    
+
     outputs:
       image-tag: ${{ steps.meta.outputs.tags }}
       image-digest: ${{ steps.build.outputs.digest }}
-    
+
     steps:
       - name: 📥 Checkout Code
         uses: actions/checkout@v4
@@ -110,7 +110,7 @@ jobs:
     runs-on: ubuntu-latest
     if: ${{ inputs.deploy_infrastructure == true }}
     environment: production
-    
+
     steps:
       - name: 📥 Checkout Code
         uses: actions/checkout@v4
@@ -125,6 +125,7 @@ jobs:
           cat > .env.production << EOF
           APP_PORT=3000
           APP_ENV=production
+          APP_USER_LOCATION_LIMIT=${{ secrets.APP_USER_LOCATION_LIMIT }}
           NODE_ENV=production
           DATABASE_HOST=alert-monitor-postgres
           DATABASE_PORT=5432
@@ -147,7 +148,7 @@ jobs:
             scripts/ \
             .env.production \
             deployer@${{ secrets.HETZNER_SERVER_IP }}:/opt/alert-monitor/
-          
+
           # Run deployment script
           ssh -o StrictHostKeyChecking=no deployer@${{ secrets.HETZNER_SERVER_IP }} << 'EOF'
             cd /opt/alert-monitor
@@ -161,7 +162,7 @@ jobs:
     needs: [docker-build]
     if: always() && needs.docker-build.result == 'success'
     environment: production
-    
+
     steps:
       - name: 📥 Checkout Code
         uses: actions/checkout@v4
@@ -186,6 +187,7 @@ jobs:
           cat > .env.production << EOF
           APP_PORT=3000
           APP_ENV=production
+          APP_USER_LOCATION_LIMIT=${{ secrets.APP_USER_LOCATION_LIMIT }}
           NODE_ENV=production
           DATABASE_HOST=alert-monitor-postgres
           DATABASE_PORT=5432
@@ -208,7 +210,7 @@ jobs:
             scripts/ \
             .env.production \
             deployer@${{ secrets.HETZNER_SERVER_IP }}:/opt/alert-monitor/
-          
+
           # Run deployment script
           ssh -o StrictHostKeyChecking=no deployer@${{ secrets.HETZNER_SERVER_IP }} << EOF
             cd /opt/alert-monitor
@@ -227,7 +229,7 @@ jobs:
     needs: [deploy-application]
     if: always() && needs.deploy-application.result == 'success'
     environment: production
-    
+
     steps:
       - name: 🔐 Setup SSH
         uses: webfactory/ssh-agent@v0.9.0
@@ -252,16 +254,16 @@ jobs:
     needs: [migrate]
     if: always() && (needs.migrate.result == 'success' || needs.migrate.result == 'skipped')
     environment: production
-    
+
     steps:
       - name: 🏥 Check Application Health
         run: |
           # Wait a bit for application to stabilize
           sleep 10
-          
+
           # Check health endpoint
           response=$(curl -s -o /dev/null -w "%{http_code}" http://${{ secrets.HETZNER_SERVER_IP }}:3000/api/health)
-          
+
           if [ "$response" = "200" ]; then
             echo "✅ Application is healthy (HTTP $response)"
           else
@@ -279,7 +281,7 @@ jobs:
     needs: [health-check]
     if: always()
     environment: production
-    
+
     steps:
       - name: 📢 Deployment Success
         if: needs.health-check.result == 'success'

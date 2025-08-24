@@ -6,6 +6,7 @@ import { LoggerModule } from 'nestjs-pino';
 import { TelegrafModule } from 'nestjs-telegraf';
 
 import { BotModule } from '~/bot/bot.module';
+import { AppEnvironment } from '~/config';
 import { ConfigModule } from '~/config/config.module';
 import { IConfig } from '~/config/types';
 import { ENTITIES } from '~/database';
@@ -36,6 +37,7 @@ import { SchedulerModule } from '~/scheduler/scheduler.module';
       inject: [ConfigService],
       useFactory: (configService: ConfigService<IConfig, true>) => {
         const config = configService.get('database', { infer: true });
+        const appConfig = configService.get('app', { infer: true });
         return {
           ...config,
           entities: ENTITIES,
@@ -43,7 +45,7 @@ import { SchedulerModule } from '~/scheduler/scheduler.module';
           synchronize: false,
           migrationsRun: false,
           installExtensions: true,
-          logging: true,
+          logging: appConfig.env === AppEnvironment.PRODUCTION ? false : true,
           logger: 'formatted-console'
         };
       }

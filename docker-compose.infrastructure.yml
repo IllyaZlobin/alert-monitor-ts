@@ -51,6 +51,8 @@ services:
       - ./config/redis-users.acl:/etc/redis/users.acl:ro
     command: |
       sh -c '
+        # Install gettext for envsubst
+        apk add --no-cache gettext
         # Substitute environment variables in config files
         envsubst < /etc/redis/redis.conf > /tmp/redis.conf
         envsubst < /etc/redis/users.acl > /tmp/users.acl

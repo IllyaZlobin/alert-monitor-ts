@@ -6,6 +6,7 @@ import { Context } from 'telegraf';
 import { InlineKeyboardMarkup } from 'telegraf/types';
 import { Repository } from 'typeorm';
 
+import { COMMAND } from '~/bot/constants';
 import { UserEntity } from '~/database/entities';
 import { LocationService } from '~/database/location/location.service';
 import { nonNull } from '~/utils';
@@ -30,7 +31,7 @@ export class UpdateProvider {
     return;
   }
 
-  @Command('add_location')
+  @Command(COMMAND.ADD_LOCATION)
   async onAddLocation(@Ctx() ctx: Context) {
     const text = ctx.text;
     const locationName = text?.replace('/add_location', '').trim();
@@ -69,7 +70,7 @@ export class UpdateProvider {
     await ctx.reply(`✅ Локація "${_.capitalize(newLocation.name)}" успішно додана до вашого списку`);
   }
 
-  @Command('list_locations')
+  @Command(COMMAND.LIST_LOCATIONS)
   async onListLocations(@Ctx() ctx: Context) {
     const userId = nonNull(ctx.from).id;
     const locations = await this.locationService.getUserLocationsByTelegramId(userId);
@@ -104,7 +105,7 @@ export class UpdateProvider {
     );
   }
 
-  @Command('help')
+  @Command(COMMAND.HELP)
   async onHelp(@Ctx() ctx: Context) {
     const helpMessage =
       '🤖 <b>Довідка по командах бота</b>\n\n' +

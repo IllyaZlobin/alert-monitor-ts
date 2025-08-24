@@ -108,7 +108,19 @@ jobs:
           ssh -o StrictHostKeyChecking=no deployer@${{ secrets.HETZNER_SERVER_IP }} << EOF
             cd /opt/alert-monitor
             chmod +x scripts/deploy-application.sh
-            ./scripts/deploy-application.sh ${{ inputs.version }}
+            
+            # Login to GHCR
+            echo ${{ secrets.GITHUB_TOKEN }} | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+            
+            # Pull the image from GHCR (use main tag for manual deployment)
+            DOCKER_IMAGE_TAG="ghcr.io/${{ github.repository }}:${{ inputs.version }}"
+            docker pull \$DOCKER_IMAGE_TAG
+            
+            # Set the image name for docker-compose
+            export DOCKER_IMAGE="\$DOCKER_IMAGE_TAG"
+            
+            # Deploy application (skip build since we pull from registry)
+            ./scripts/deploy-application.sh ${{ inputs.version }} true
           EOF
 
       - name: 🔄 Restart Application

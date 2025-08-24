@@ -212,6 +212,9 @@ jobs:
             # Pull the built image
             docker pull ${{ needs.docker-build.outputs.image-tag }}
             
+            # Set the image name for docker-compose
+            export DOCKER_IMAGE="${{ needs.docker-build.outputs.image-tag }}"
+            
             # Deploy application (skip build since we pull from registry)
             ./scripts/deploy-application.sh ${{ inputs.version || github.sha }} true
           EOF

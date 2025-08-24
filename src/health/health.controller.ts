@@ -8,7 +8,7 @@ import { IConfig } from '~/config/types';
 export class HealthController {
   constructor(private readonly configService: ConfigService<IConfig, true>) {}
 
-  @Get('health')
+  @Get()
   async health() {
     const appConfig = this.configService.get('app', { infer: true });
 

@@ -90,10 +90,10 @@ sudo chown -R $(whoami):$(whoami) /opt/alert-monitor/logs
 
 # Stop existing application (if running)
 log "⏹️ Stopping existing application..."
-docker-compose -f docker-compose.prod.yml down --remove-orphans || true
+docker-compose -f docker-compose.prod.yml down || true
 
-# Remove old containers (keep images for faster deployment)
-docker container prune -f || true
+# Remove old application containers only (keep infrastructure)
+docker ps -a --filter "name=alert-monitor-app" --filter "status=exited" -q | xargs docker rm -f 2>/dev/null || true
 
 # Start application
 log "🚀 Starting application..."

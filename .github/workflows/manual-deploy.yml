@@ -96,6 +96,7 @@ jobs:
           BOT_TOKEN=${{ secrets.BOT_TOKEN }}
           PUBLIC_ALERT_GROUP_URL=${{ secrets.PUBLIC_ALERT_GROUP_URL }}
           APP_VERSION=${{ inputs.version }}
+          DOCKER_IMAGE=ghcr.io/${{ github.repository }}:${{ inputs.version }}
           EOF
           
           # Copy to server and deploy
@@ -112,12 +113,8 @@ jobs:
             # Login to GHCR
             echo ${{ secrets.GITHUB_TOKEN }} | docker login ghcr.io -u ${{ github.actor }} --password-stdin
             
-            # Pull the image from GHCR (use main tag for manual deployment)
-            DOCKER_IMAGE_TAG="ghcr.io/${{ github.repository }}:${{ inputs.version }}"
-            docker pull \$DOCKER_IMAGE_TAG
-            
-            # Set the image name for docker-compose
-            export DOCKER_IMAGE="\$DOCKER_IMAGE_TAG"
+            # Pull the image from GHCR
+            docker pull ghcr.io/${{ github.repository }}:${{ inputs.version }}
             
             # Deploy application (skip build since we pull from registry)
             ./scripts/deploy-application.sh ${{ inputs.version }} true

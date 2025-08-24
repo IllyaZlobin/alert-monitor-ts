@@ -193,6 +193,7 @@ jobs:
           BOT_TOKEN=${{ secrets.BOT_TOKEN }}
           PUBLIC_ALERT_GROUP_URL=${{ secrets.PUBLIC_ALERT_GROUP_URL }}
           APP_VERSION=${{ inputs.version || github.sha }}
+          DOCKER_IMAGE=${{ needs.docker-build.outputs.image-tag }}
           EOF
 
       - name: 📤 Deploy Application to Server
@@ -211,9 +212,6 @@ jobs:
             
             # Pull the built image
             docker pull ${{ needs.docker-build.outputs.image-tag }}
-            
-            # Set the image name for docker-compose
-            export DOCKER_IMAGE="${{ needs.docker-build.outputs.image-tag }}"
             
             # Deploy application (skip build since we pull from registry)
             ./scripts/deploy-application.sh ${{ inputs.version || github.sha }} true

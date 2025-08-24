@@ -113,8 +113,9 @@ jobs:
             # Login to GHCR
             echo ${{ secrets.GITHUB_TOKEN }} | docker login ghcr.io -u ${{ github.actor }} --password-stdin
             
-            # Pull the image from GHCR
-            docker pull ghcr.io/${{ github.repository }}:${{ inputs.version }}
+            # Pull the image from GHCR  
+            DOCKER_IMAGE_TAG="ghcr.io/${{ github.repository }}:${{ inputs.version }}"
+            docker pull \$DOCKER_IMAGE_TAG
             
             # Deploy application (skip build since we pull from registry)
             ./scripts/deploy-application.sh ${{ inputs.version }} true

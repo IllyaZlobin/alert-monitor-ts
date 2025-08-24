@@ -193,7 +193,7 @@ jobs:
           BOT_TOKEN=${{ secrets.BOT_TOKEN }}
           PUBLIC_ALERT_GROUP_URL=${{ secrets.PUBLIC_ALERT_GROUP_URL }}
           APP_VERSION=${{ inputs.version || github.sha }}
-          DOCKER_IMAGE=${{ needs.docker-build.outputs.image-tag }}
+          DOCKER_IMAGE=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:main
           EOF
 
       - name: 📤 Deploy Application to Server
@@ -210,10 +210,10 @@ jobs:
             cd /opt/alert-monitor
             chmod +x scripts/deploy-application.sh
             
-            # Pull the built image
-            docker pull ${{ needs.docker-build.outputs.image-tag }}
+            DOCKER_IMAGE_TAG="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:main"
+            docker pull \$DOCKER_IMAGE_TAG
             
-            # Deploy application (skip build since we pull from registry)
+            # Deploy application (skip build since we pull from registry)  
             ./scripts/deploy-application.sh ${{ inputs.version || github.sha }} true
           EOF
 

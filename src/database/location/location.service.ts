@@ -1,14 +1,18 @@
 import { Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 
+import { IConfig } from '~/config/types';
 import { LocationEntity, UserEntity } from '~/database/entities';
+import { nonNull } from '~/utils';
 
 @Injectable()
 export class LocationService {
   constructor(
     @InjectRepository(LocationEntity) private readonly locationRepository: Repository<LocationEntity>,
-    @InjectRepository(UserEntity) private readonly userRepository: Repository<UserEntity>
+    @InjectRepository(UserEntity) private readonly userRepository: Repository<UserEntity>,
+    private readonly configService: ConfigService<IConfig, true>
   ) {}
 
   async addLocation(input: addLocationInput) {
@@ -115,6 +119,17 @@ export class LocationService {
     });
 
     return mappings;
+  }
+
+  async isUserLocationLimitExceeded(telegramId: number) {
+    const locationCount = await this.userRepository
+      .createQueryBuilder('user')
+      .leftJoin('user.locations', 'location')
+      .where('user.telegramId = :telegramId', { telegramId })
+      .select('COUNT(location.id)', 'count')
+      .getRawOne();
+    const count = parseInt(locationCount?.count || '0', 10);
+    return count >= nonNull(this.configService.get('app.userLocationsLimit', { infer: true }));
   }
 }
 

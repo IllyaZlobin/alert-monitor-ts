@@ -35,6 +35,7 @@ export class UpdateProvider {
   async onAddLocation(@Ctx() ctx: Context) {
     const text = ctx.text;
     const locationName = text?.replace('/add_location', '').trim();
+    const userId = nonNull(ctx.from).id;
     if (!locationName) {
       await ctx.reply(
         '🔍 <b>Введіть назву локації:</b>\n\n' +
@@ -57,16 +58,21 @@ export class UpdateProvider {
       );
       return;
     }
+    const isLimitExceeded = await this.locationService.isUserLocationLimitExceeded(userId);
+    if (isLimitExceeded) {
+      await ctx.reply('❌ Ви досягли ліміту на кількість збережених локацій');
+      return;
+    }
     const existingLocation = await this.locationService.getLocationByName(locationName.toLowerCase());
     if (existingLocation) {
-      await this.locationService.addLocationToUser(nonNull(ctx.from).id, existingLocation.id);
+      await this.locationService.addLocationToUser(userId, existingLocation.id);
       await ctx.reply(`✅ Локація "${_.capitalize(locationName)}" успішно додана до вашого списку`);
       return;
     }
     const newLocation = await this.locationService.addLocation({
       name: locationName.toLowerCase()
     });
-    await this.locationService.addLocationToUser(nonNull(ctx.from).id, newLocation.id);
+    await this.locationService.addLocationToUser(userId, newLocation.id);
     await ctx.reply(`✅ Локація "${_.capitalize(newLocation.name)}" успішно додана до вашого списку`);
   }
 

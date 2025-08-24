@@ -243,7 +243,7 @@ jobs:
             timeout 60 bash -c 'until curl -s http://localhost:3000/api/health; do sleep 2; done'
             
             # Run migrations using production script
-            docker-compose -f docker-compose.prod.yml exec -T app npm run typeorm:prod -- migration:run --env=production
+            docker-compose -f docker-compose.prod.yml --env-file .env.production exec -T app npm run typeorm:prod -- migration:run --env=production
           EOF
 
   health-check:

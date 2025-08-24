@@ -17,6 +17,7 @@ import { MESSAGE_PROCESSING_QUEUE } from '~/queue/constants';
 @Injectable()
 export class Monitor {
   private readonly logger = new Logger(Monitor.name);
+  private readonly MAX_MESSAGE_LENGTH = 500;
 
   private readonly headers = {
     'User-Agent':
@@ -89,7 +90,14 @@ export class Monitor {
             timeElem = $block.find('.tgme_widget_message_meta').first();
           }
           const messageTime = timeElem.attr('datetime') || '';
-          // TODO: Add message length validation. If message is too long, skip it.
+
+          if (messageText.length > this.MAX_MESSAGE_LENGTH) {
+            this.logger.debug(
+              `Skipping message ${messageId} - too long (${messageText.length} chars, max: ${this.MAX_MESSAGE_LENGTH})`
+            );
+            return;
+          }
+
           if (messageId && messageText) {
             messages.push({
               id: messageId,

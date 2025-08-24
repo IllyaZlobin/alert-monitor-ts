@@ -146,7 +146,7 @@ jobs:
           ssh -o StrictHostKeyChecking=no deployer@${{ secrets.HETZNER_SERVER_IP }} << 'EOF'
             cd /opt/alert-monitor
             echo "Running database migrations..."
-            docker-compose -f docker-compose.prod.yml exec -T app npm run typeorm -- migration:run --env=production
+            docker-compose -f docker-compose.prod.yml exec -T app npm run typeorm:prod -- migration:run --env=production
             echo "Migrations completed!"
           EOF
 

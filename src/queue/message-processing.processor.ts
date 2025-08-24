@@ -53,6 +53,7 @@ export class MessageProcessingProcessor extends WorkerHost {
 
       this.logger.log(`Found ${matches.length} matches with locations for the message ${messageId}`);
 
+      // TODO Save users's alert notifications to the database. In the future to aggregate them and collect statistics.
       const userNotifications = this.groupNotificationsByUser(matches, targetMessage);
       await this.notificationService.sendBulkAlertNotifications(userNotifications);
       await this.messageService.markMessageAsProcessed(messageId);

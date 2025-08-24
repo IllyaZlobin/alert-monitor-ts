@@ -1,8 +1,8 @@
 import { Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import _ from 'lodash';
-import { Action, Command, Ctx, InjectBot, Start, Update } from 'nestjs-telegraf';
-import { Telegraf, Context } from 'telegraf';
+import { Action, Command, Ctx, Start, Update } from 'nestjs-telegraf';
+import { Context } from 'telegraf';
 import { InlineKeyboardMarkup } from 'telegraf/types';
 import { Repository } from 'typeorm';
 
@@ -15,7 +15,6 @@ export class UpdateProvider {
   private readonly logger = new Logger(UpdateProvider.name);
 
   constructor(
-    @InjectBot() private readonly bot: Telegraf<Context>,
     @InjectRepository(UserEntity) private readonly userRepo: Repository<UserEntity>,
     private readonly locationService: LocationService
   ) {}

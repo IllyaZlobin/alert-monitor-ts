@@ -101,13 +101,6 @@ services:
         max-size: "5m"
         max-file: "3"
 
-networks:
-  alert-monitor-network:
-    driver: bridge
-    ipam:
-      config:
-        - subnet: 172.20.0.0/16
-
 volumes:
   postgres_data:
     driver: local
@@ -129,3 +122,7 @@ volumes:
       type: none
       o: bind
       device: /opt/alert-monitor/data/redisinsight
+
+networks:
+  alert-monitor-network:
+    external: true

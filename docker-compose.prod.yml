@@ -1,0 +1,55 @@
+version: '3.8'
+
+services:
+  app:
+    image: ${DOCKER_IMAGE:-alert-monitor-ts:${APP_VERSION:-latest}}
+    container_name: alert-monitor-app
+    restart: unless-stopped
+    environment:
+      APP_PORT: ${APP_PORT:-3000}
+      APP_ENV: ${APP_ENV:-production}
+      
+      DATABASE_HOST: alert-monitor-postgres
+      DATABASE_PORT: 5432
+      DATABASE_USERNAME: ${DATABASE_USERNAME:-postgres}
+      DATABASE_PASSWORD: ${DATABASE_PASSWORD:?DATABASE_PASSWORD is required}
+      DATABASE_NAME: ${DATABASE_NAME:-alert_bot}
+      
+      REDIS_URL: redis://${REDIS_USERNAME:-alertapp}:${REDIS_PASSWORD:?REDIS_PASSWORD is required}@alert-monitor-redis:6379
+      
+      BOT_TOKEN: ${BOT_TOKEN:?BOT_TOKEN is required}
+      PUBLIC_ALERT_GROUP_URL: ${PUBLIC_ALERT_GROUP_URL:-}
+      
+      NODE_ENV: production
+    ports:
+      - "0.0.0.0:3000:3000"
+    volumes:
+      - /opt/alert-monitor/logs:/app/logs
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/api/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) })"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+        reservations:
+          memory: 256M
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+        window: 120s
+    networks:
+      - alert-monitor-network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+networks:
+  alert-monitor-network:
+    external: true

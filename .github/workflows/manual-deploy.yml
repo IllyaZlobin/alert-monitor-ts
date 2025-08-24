@@ -1,0 +1,236 @@
+# =================================================================
+# Manual Deployment Workflow
+# =================================================================
+
+name: 🔧 Manual Operations
+
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: 'Action to perform'
+        required: true
+        type: choice
+        options:
+          - 'deploy-infrastructure'
+          - 'deploy-application'
+          - 'restart-application'
+          - 'run-migrations'
+          - 'cleanup-docker'
+          - 'show-logs'
+          - 'health-check'
+      version:
+        description: 'Version (for application deploy)'
+        required: false
+        default: 'latest'
+        type: string
+
+concurrency:
+  group: manual-operations
+  cancel-in-progress: true
+
+jobs:
+  manual-operation:
+    name: 🔧 ${{ inputs.action }}
+    runs-on: ubuntu-latest
+    environment: production
+    
+    steps:
+      - name: 📥 Checkout Code
+        uses: actions/checkout@v4
+        if: contains(fromJson('["deploy-infrastructure", "deploy-application"]'), inputs.action)
+
+      - name: 🔐 Setup SSH
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.HETZNER_SSH_KEY }}
+      - name: 🏗️ Deploy Infrastructure
+        if: inputs.action == 'deploy-infrastructure'
+        run: |
+          # Create environment file
+          cat > .env.production << EOF
+          APP_PORT=3000
+          APP_ENV=production
+          NODE_ENV=production
+          DATABASE_HOST=alert-monitor-postgres
+          DATABASE_PORT=5432
+          DATABASE_USERNAME=${{ secrets.DB_USERNAME }}
+          DATABASE_PASSWORD=${{ secrets.DB_PASSWORD }}
+          DATABASE_NAME=${{ secrets.DB_NAME }}
+          REDIS_USERNAME=${{ secrets.REDIS_USERNAME }}
+          REDIS_PASSWORD=${{ secrets.REDIS_PASSWORD }}
+          BOT_TOKEN=${{ secrets.BOT_TOKEN }}
+          PUBLIC_ALERT_GROUP_URL=${{ secrets.PUBLIC_ALERT_GROUP_URL }}
+          APP_VERSION=${{ inputs.version }}
+          EOF
+          
+          # Copy to server and deploy
+          scp -o StrictHostKeyChecking=no -r \
+            docker-compose.infrastructure.yml \
+            config/ \
+            scripts/ \
+            .env.production \
+            deployer@${{ secrets.HETZNER_SERVER_IP }}:/opt/alert-monitor/
+          
+          ssh -o StrictHostKeyChecking=no deployer@${{ secrets.HETZNER_SERVER_IP }} << 'EOF'
+            cd /opt/alert-monitor
+            chmod +x scripts/deploy-infrastructure.sh
+            ./scripts/deploy-infrastructure.sh
+          EOF
+
+      - name: 🚀 Deploy Application
+        if: inputs.action == 'deploy-application'
+        run: |
+          # Create environment file
+          cat > .env.production << EOF
+          APP_PORT=3000
+          APP_ENV=production
+          NODE_ENV=production
+          DATABASE_HOST=alert-monitor-postgres
+          DATABASE_PORT=5432
+          DATABASE_USERNAME=${{ secrets.DB_USERNAME }}
+          DATABASE_PASSWORD=${{ secrets.DB_PASSWORD }}
+          DATABASE_NAME=${{ secrets.DB_NAME }}
+          REDIS_USERNAME=${{ secrets.REDIS_USERNAME }}
+          REDIS_PASSWORD=${{ secrets.REDIS_PASSWORD }}
+          BOT_TOKEN=${{ secrets.BOT_TOKEN }}
+          PUBLIC_ALERT_GROUP_URL=${{ secrets.PUBLIC_ALERT_GROUP_URL }}
+          APP_VERSION=${{ inputs.version }}
+          EOF
+          
+          # Copy to server and deploy
+          scp -o StrictHostKeyChecking=no -r \
+            docker-compose.prod.yml \
+            scripts/ \
+            .env.production \
+            deployer@${{ secrets.HETZNER_SERVER_IP }}:/opt/alert-monitor/
+          
+          ssh -o StrictHostKeyChecking=no deployer@${{ secrets.HETZNER_SERVER_IP }} << EOF
+            cd /opt/alert-monitor
+            chmod +x scripts/deploy-application.sh
+            ./scripts/deploy-application.sh ${{ inputs.version }}
+          EOF
+
+      - name: 🔄 Restart Application
+        if: inputs.action == 'restart-application'
+        run: |
+          ssh -o StrictHostKeyChecking=no deployer@${{ secrets.HETZNER_SERVER_IP }} << 'EOF'
+            cd /opt/alert-monitor
+            docker-compose -f docker-compose.prod.yml restart app
+            
+            # Wait for application to be ready
+            echo "Waiting for application to start..."
+            timeout 60 bash -c 'until curl -s http://localhost:3000/api/health; do sleep 2; echo -n "."; done'
+            echo ""
+            echo "Application restarted successfully!"
+          EOF
+
+      - name: 🗃️ Run Migrations
+        if: inputs.action == 'run-migrations'
+        run: |
+          ssh -o StrictHostKeyChecking=no deployer@${{ secrets.HETZNER_SERVER_IP }} << 'EOF'
+            cd /opt/alert-monitor
+            echo "Running database migrations..."
+            docker-compose -f docker-compose.prod.yml exec -T app npm run typeorm -- migration:run --env=local
+            echo "Migrations completed!"
+          EOF
+
+      - name: 🧹 Cleanup Docker
+        if: inputs.action == 'cleanup-docker'
+        run: |
+          ssh -o StrictHostKeyChecking=no deployer@${{ secrets.HETZNER_SERVER_IP }} << 'EOF'
+            echo "Cleaning up Docker resources..."
+            
+            # Remove stopped containers
+            docker container prune -f
+            
+            # Remove unused images (keep latest 3)
+            docker image prune -f
+            
+            # Remove unused volumes (be careful!)
+            # docker volume prune -f
+            
+            # Remove unused networks
+            docker network prune -f
+            
+            # Show disk usage
+            echo "Docker disk usage after cleanup:"
+            docker system df
+          EOF
+
+      - name: 📋 Show Logs
+        if: inputs.action == 'show-logs'
+        run: |
+          ssh -o StrictHostKeyChecking=no deployer@${{ secrets.HETZNER_SERVER_IP }} << 'EOF'
+            cd /opt/alert-monitor
+            
+            echo "=== Application Logs (last 50 lines) ==="
+            docker-compose -f docker-compose.prod.yml logs --tail=50 app
+            
+            echo ""
+            echo "=== PostgreSQL Logs (last 20 lines) ==="
+            docker-compose -f docker-compose.infrastructure.yml logs --tail=20 postgres
+            
+            echo ""
+            echo "=== Redis Logs (last 20 lines) ==="
+            docker-compose -f docker-compose.infrastructure.yml logs --tail=20 redis
+            
+            echo ""
+            echo "=== Container Status ==="
+            docker ps -a
+            
+            echo ""
+            echo "=== System Resources ==="
+            docker stats --no-stream
+          EOF
+
+      - name: 🏥 Health Check
+        if: inputs.action == 'health-check'
+        run: |
+          ssh -o StrictHostKeyChecking=no deployer@${{ secrets.HETZNER_SERVER_IP }} << 'EOF'
+            echo "=== Health Check Results ==="
+            
+            echo "1. Application Health:"
+            curl -s http://localhost:3000/api/health | jq '.' || echo "❌ Application not responding"
+            
+            echo ""
+            echo "2. PostgreSQL Status:"
+            docker exec alert-monitor-postgres pg_isready -U postgres || echo "❌ PostgreSQL not ready"
+            
+            echo ""
+            echo "3. Redis Status:"
+            docker exec alert-monitor-redis redis-cli -a \$REDIS_PASSWORD ping || echo "❌ Redis not responding"
+            
+            echo ""
+            echo "4. Container Status:"
+            docker ps --filter "name=alert-monitor" --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
+            
+            echo ""
+            echo "5. Disk Usage:"
+            df -h /opt/alert-monitor
+            
+            echo ""
+            echo "6. Memory Usage:"
+            free -h
+          EOF
+
+      - name: 📊 Operation Summary
+        run: |
+          echo "✅ Operation '${{ inputs.action }}' completed successfully!"
+          
+          case "${{ inputs.action }}" in
+            "deploy-infrastructure")
+              echo "🏗️ Infrastructure deployed. Services should be available at:"
+              echo "   - PostgreSQL: ${{ secrets.HETZNER_SERVER_IP }}:5432"
+              echo "   - Redis: ${{ secrets.HETZNER_SERVER_IP }}:6379"
+              echo "   - RedisInsight: http://${{ secrets.HETZNER_SERVER_IP }}:5540"
+              ;;
+            "deploy-application")
+              echo "🚀 Application deployed. Available at:"
+              echo "   - Application: http://${{ secrets.HETZNER_SERVER_IP }}:3000"
+              echo "   - Health Check: http://${{ secrets.HETZNER_SERVER_IP }}:3000/api/health"
+              ;;
+            *)
+              echo "📋 Check the logs above for detailed results."
+              ;;
+          esac

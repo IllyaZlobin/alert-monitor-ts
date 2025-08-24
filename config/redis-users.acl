@@ -1,11 +1,3 @@
-# Redis ACL Users Configuration
-# This file defines users and their permissions
-
-# Default user (disabled for security)
 user default off
-
-# Application user with full permissions
 user ${REDIS_USERNAME} on >${REDIS_PASSWORD} ~* &* +@all
-
-# Read-only user for monitoring/debugging
 user readonly on >${REDIS_PASSWORD} ~* &* +@read +info +ping +client +config|get

@@ -36,8 +36,8 @@ async function getConfig() {
     host,
     applicationName: 'alert-bot',
     installExtensions: true,
-    entities: ['src/database/entities/*.ts'],
-    migrations: ['migrations/*.ts'],
+    entities: [process.env.APP_ENV === 'production' ? 'dist/src/database/entities/*.js' : 'src/database/entities/*.ts'],
+    migrations: [process.env.APP_ENV === 'production' ? 'dist/migrations/*.js' : 'migrations/*.ts'],
     migrationsTableName: 'typeorm_migrations'
   });
 }

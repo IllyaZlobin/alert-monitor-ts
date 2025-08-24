@@ -89,6 +89,7 @@ export class Monitor {
             timeElem = $block.find('.tgme_widget_message_meta').first();
           }
           const messageTime = timeElem.attr('datetime') || '';
+          // TODO: Add message length validation. If message is too long, skip it.
           if (messageId && messageText) {
             messages.push({
               id: messageId,

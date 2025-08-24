@@ -177,6 +177,10 @@ jobs:
             echo ${{ secrets.GITHUB_TOKEN }} | docker login ${{ env.REGISTRY }} -u ${{ github.actor }} --password-stdin
           EOF
 
+      - name: 🔤 Convert Repository to Lowercase
+        id: lowercase
+        run: echo "repository=$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]')" >> $GITHUB_OUTPUT
+
       - name: 📝 Create Environment File
         run: |
           cat > .env.production << EOF
@@ -193,7 +197,7 @@ jobs:
           BOT_TOKEN=${{ secrets.BOT_TOKEN }}
           PUBLIC_ALERT_GROUP_URL=${{ secrets.PUBLIC_ALERT_GROUP_URL }}
           APP_VERSION=${{ inputs.version || github.sha }}
-          DOCKER_IMAGE=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:main
+          DOCKER_IMAGE=${{ env.REGISTRY }}/${{ steps.lowercase.outputs.repository }}:main
           EOF
 
       - name: 📤 Deploy Application to Server
@@ -210,7 +214,7 @@ jobs:
             cd /opt/alert-monitor
             chmod +x scripts/deploy-application.sh
             
-            DOCKER_IMAGE_TAG="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:main"
+            DOCKER_IMAGE_TAG="${{ env.REGISTRY }}/${{ steps.lowercase.outputs.repository }}:main"
             docker pull \$DOCKER_IMAGE_TAG
             
             # Deploy application (skip build since we pull from registry)  

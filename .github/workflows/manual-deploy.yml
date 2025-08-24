@@ -78,6 +78,11 @@ jobs:
             ./scripts/deploy-infrastructure.sh
           EOF
 
+      - name: 🔤 Convert Repository to Lowercase
+        id: lowercase
+        if: inputs.action == 'deploy-application'
+        run: echo "repository=$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]')" >> $GITHUB_OUTPUT
+
       - name: 🚀 Deploy Application
         if: inputs.action == 'deploy-application'
         run: |
@@ -96,7 +101,7 @@ jobs:
           BOT_TOKEN=${{ secrets.BOT_TOKEN }}
           PUBLIC_ALERT_GROUP_URL=${{ secrets.PUBLIC_ALERT_GROUP_URL }}
           APP_VERSION=${{ inputs.version }}
-          DOCKER_IMAGE=ghcr.io/${{ github.repository }}:${{ inputs.version }}
+          DOCKER_IMAGE=ghcr.io/${{ steps.lowercase.outputs.repository }}:${{ inputs.version }}
           EOF
           
           # Copy to server and deploy
@@ -114,7 +119,7 @@ jobs:
             echo ${{ secrets.GITHUB_TOKEN }} | docker login ghcr.io -u ${{ github.actor }} --password-stdin
             
             # Pull the image from GHCR  
-            DOCKER_IMAGE_TAG="ghcr.io/${{ github.repository }}:${{ inputs.version }}"
+            DOCKER_IMAGE_TAG="ghcr.io/${{ steps.lowercase.outputs.repository }}:${{ inputs.version }}"
             docker pull \$DOCKER_IMAGE_TAG
             
             # Deploy application (skip build since we pull from registry)

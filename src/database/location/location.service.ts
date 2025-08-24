@@ -1,6 +1,5 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import _ from 'lodash';
 import { Repository } from 'typeorm';
 
 import { LocationEntity, UserEntity } from '~/database/entities';

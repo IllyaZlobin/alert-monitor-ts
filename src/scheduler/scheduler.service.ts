@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/require-await */
 import { InjectQueue } from '@nestjs/bullmq';
 import { Injectable, Logger, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';

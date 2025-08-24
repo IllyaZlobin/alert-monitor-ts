@@ -105,6 +105,30 @@ export class UpdateProvider {
     );
   }
 
+  @Command('help')
+  async onHelp(@Ctx() ctx: Context) {
+    const helpMessage =
+      '🤖 <b>Довідка по командах бота</b>\n\n' +
+      '🏠 <b>Основні команди:</b>\n' +
+      '• <code>/start</code> - Почати роботу з ботом та зареєструватись\n' +
+      '• <code>/help</code> - Показати це повідомлення з довідкою\n\n' +
+      '📍 <b>Управління локаціями:</b>\n' +
+      '• <code>/add_location</code> [назва] - Додати локацію для моніторингу\n' +
+      '• <code>/list_locations</code> - Переглянути всі збережені локації\n\n' +
+      '💡 <b>Приклади використання:</b>\n' +
+      '• <code>/add_location Київ</code>\n' +
+      '• <code>/add_location Одеса</code>\n' +
+      '• <code>/add_location Львів</code>\n\n' +
+      '📝 <b>Примітки:</b>\n' +
+      '• Назва локації має бути довжиною від 3 до 50 символів\n' +
+      '• Можна використовувати українські літери, пробіли та дефіс\n' +
+      '• Кожна додана локація буде відстежуватись на предмет тривог\n\n' +
+      '❓ <b>Потрібна допомога?</b>\n' +
+      'Якщо у вас виникли питання, будь ласка, перегляньте опис бота та напишіть нам в телеграмі або на електронну пошту.';
+
+    await ctx.reply(helpMessage, { parse_mode: 'HTML' });
+  }
+
   @Action(/delete_location:(.+)/)
   async onDeleteLocation(@Ctx() ctx: Context) {
     if (!ctx.callbackQuery || !('data' in ctx.callbackQuery)) {

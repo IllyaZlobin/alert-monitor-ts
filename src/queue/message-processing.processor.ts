@@ -29,13 +29,13 @@ export class MessageProcessingProcessor extends WorkerHost {
 
     this.logger.log(`Message is processing: ${messageId}`);
 
-    try {
-      const targetMessage = await this.messageService.getUnprocessedMessageById(messageId);
-      if (!targetMessage) {
-        this.logger.warn(`Message ${messageId} not found or has been already processed`);
-        return;
-      }
+    const targetMessage = await this.messageService.getUnprocessedMessageById(messageId);
+    if (!targetMessage) {
+      this.logger.warn(`Message ${messageId} not found or has been already processed`);
+      return;
+    }
 
+    try {
       const userLocations = await this.locationService.getAllUserLocationMappings();
 
       if (userLocations.length === 0) {
@@ -56,14 +56,14 @@ export class MessageProcessingProcessor extends WorkerHost {
       // TODO Save users's alert notifications to the database. In the future to aggregate them and collect statistics.
       const userNotifications = this.groupNotificationsByUser(matches, targetMessage);
       await this.notificationService.sendBulkAlertNotifications(userNotifications);
-      await this.messageService.markMessageAsProcessed(messageId);
 
       this.logger.log(
         `Message ${messageId} was successfully processed, sent ${userNotifications.length} notifications`
       );
     } catch (error) {
       this.logger.error(`Error processing the message ${messageId}:`, error);
-      throw error;
+    } finally {
+      await this.messageService.markMessageAsProcessed(messageId);
     }
   }
 

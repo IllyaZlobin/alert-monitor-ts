@@ -144,11 +144,7 @@ export class Monitor {
           { messageId: message.id },
           {
             priority: 10, // High priority
-            attempts: 3,
-            backoff: {
-              type: 'exponential',
-              delay: 2000
-            },
+            attempts: 1, // No retries - process only once
             removeOnComplete: 50,
             removeOnFail: 10
           }

@@ -105,57 +105,6 @@ jobs:
           cache-to: type=gha,mode=max
           platforms: linux/amd64
 
-  deploy-infrastructure:
-    name: 🏗️ Deploy Infrastructure
-    runs-on: ubuntu-latest
-    if: ${{ inputs.deploy_infrastructure == true }}
-    environment: production
-
-    steps:
-      - name: 📥 Checkout Code
-        uses: actions/checkout@v4
-
-      - name: 🔐 Setup SSH
-        uses: webfactory/ssh-agent@v0.9.0
-        with:
-          ssh-private-key: ${{ secrets.HETZNER_SSH_KEY }}
-
-      - name: 📝 Create Environment File
-        run: |
-          cat > .env.production << EOF
-          APP_PORT=3000
-          APP_ENV=production
-          APP_USER_LOCATION_LIMIT=${{ secrets.APP_USER_LOCATION_LIMIT }}
-          NODE_ENV=production
-          DATABASE_HOST=alert-monitor-postgres
-          DATABASE_PORT=5432
-          DATABASE_USERNAME=${{ secrets.DB_USERNAME }}
-          DATABASE_PASSWORD=${{ secrets.DB_PASSWORD }}
-          DATABASE_NAME=${{ secrets.DB_NAME }}
-          REDIS_USERNAME=${{ secrets.REDIS_USERNAME }}
-          REDIS_PASSWORD=${{ secrets.REDIS_PASSWORD }}
-          BOT_TOKEN=${{ secrets.BOT_TOKEN }}
-          PUBLIC_ALERT_GROUP_URL=${{ secrets.PUBLIC_ALERT_GROUP_URL }}
-          APP_VERSION=${{ inputs.version || github.sha }}
-          EOF
-
-      - name: 📤 Deploy Infrastructure to Server
-        run: |
-          # Copy files to server
-          scp -o StrictHostKeyChecking=no -r \
-            docker-compose.infrastructure.yml \
-            config/ \
-            scripts/ \
-            .env.production \
-            deployer@${{ secrets.HETZNER_SERVER_IP }}:/opt/alert-monitor/
-
-          # Run deployment script
-          ssh -o StrictHostKeyChecking=no deployer@${{ secrets.HETZNER_SERVER_IP }} << 'EOF'
-            cd /opt/alert-monitor
-            chmod +x scripts/deploy-infrastructure.sh
-            ./scripts/deploy-infrastructure.sh
-          EOF
-
   deploy-application:
     name: 🚀 Deploy Application
     runs-on: ubuntu-latest

@@ -86,9 +86,10 @@ export class SchedulerService implements OnModuleInit, OnModuleDestroy {
       this.logger.log('Start parsing and processing messages...');
       const startTime = Date.now();
       await this.monitor.parseAndProcessMessages();
-      if (this.shouldCleanup()) {
+      // TOOD Add new task to the queue for cleanup old messages
+      /* if (this.shouldCleanup()) {
         await this.monitor.cleanupOldMessages();
-      }
+      } */
       const executionTime = Date.now() - startTime;
       this.logger.log(`Cycle completed in ${executionTime}ms`);
     } catch (error) {

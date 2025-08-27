@@ -1,4 +1,5 @@
 import { BullModule } from '@nestjs/bullmq';
+import { CacheModule } from '@nestjs/cache-manager';
 import { Module } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
@@ -51,6 +52,7 @@ import { SchedulerModule } from '~/scheduler/scheduler.module';
       }
     }),
     ConfigModule,
+    CacheModule.register({ isGlobal: true }),
     BotModule,
     MonitorModule,
     QueueModule,

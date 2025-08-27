@@ -1,7 +1,8 @@
-import { Logger } from '@nestjs/common';
+import { CACHE_MANAGER, Cache } from '@nestjs/cache-manager';
+import { Inject, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import _ from 'lodash';
-import { Action, Command, Ctx, Start, Update } from 'nestjs-telegraf';
+import { Action, Command, Ctx, On, Start, Update } from 'nestjs-telegraf';
 import { Context } from 'telegraf';
 import { InlineKeyboardMarkup } from 'telegraf/types';
 import { Repository } from 'typeorm';
@@ -10,14 +11,17 @@ import { COMMAND } from '~/bot/constants';
 import { UserEntity } from '~/database/entities';
 import { LocationService } from '~/database/location/location.service';
 import { nonNull } from '~/utils';
-
 @Update()
 export class UpdateProvider {
   private readonly logger = new Logger(UpdateProvider.name);
 
+  private readonly USER_ADD_LOCATION_COMMAND_CACHE_KEY = 'user_add_location_command';
+  private readonly USER_ADD_LOCATION_COMMAND_CACHE_TTL = 60 * 60 * 24 * 1; // 1 day
+
   constructor(
     @InjectRepository(UserEntity) private readonly userRepo: Repository<UserEntity>,
-    private readonly locationService: LocationService
+    private readonly locationService: LocationService,
+    @Inject(CACHE_MANAGER) private readonly cacheManager: Cache
   ) {}
 
   @Start()
@@ -33,47 +37,23 @@ export class UpdateProvider {
 
   @Command(COMMAND.ADD_LOCATION)
   async onAddLocation(@Ctx() ctx: Context) {
-    const text = ctx.text;
-    const locationName = text?.replace('/add_location', '').trim();
     const userId = nonNull(ctx.from).id;
-    if (!locationName) {
-      await ctx.reply(
-        '🔍 <b>Введіть назву локації:</b>\n\n' +
-          '<b>Приклади:</b>\n' +
-          '• <code>/add_location Київ</code>\n' +
-          '• <code>/add_location Одеса</code>\n\n' +
-          '• <code>/add_location Поділ</code>\n\n' +
-          '• <code>/add_location Жуляни</code>\n\n' +
-          '• <code>/add_location Бровари</code>\n\n' +
-          '<i>Просто напишіть команду та назву локації</i>',
-        { parse_mode: 'HTML' }
-      );
-      return;
-    }
-    const validationResult = this.validateLocationName(locationName);
-    if (!validationResult.isValid) {
-      await ctx.reply(
-        `❌ **Помилка валідації:**\n\n` + `${validationResult.error}\n\n` + 'Спробуйте ще раз з правильною назвою.',
-        { parse_mode: 'Markdown' }
-      );
-      return;
-    }
-    const isLimitExceeded = await this.locationService.isUserLocationLimitExceeded(userId);
-    if (isLimitExceeded) {
-      await ctx.reply('❌ Ви досягли ліміту на кількість збережених локацій');
-      return;
-    }
-    const existingLocation = await this.locationService.getLocationByName(locationName.toLowerCase());
-    if (existingLocation) {
-      await this.locationService.addLocationToUser(userId, existingLocation.id);
-      await ctx.reply(`✅ Локація "${_.capitalize(locationName)}" успішно додана до вашого списку`);
-      return;
-    }
-    const newLocation = await this.locationService.addLocation({
-      name: locationName.toLowerCase()
-    });
-    await this.locationService.addLocationToUser(userId, newLocation.id);
-    await ctx.reply(`✅ Локація "${_.capitalize(newLocation.name)}" успішно додана до вашого списку`);
+    await this.cacheManager.set(
+      this.getUserAddLocationCommandCacheKey(userId),
+      userId,
+      this.USER_ADD_LOCATION_COMMAND_CACHE_TTL
+    );
+    await ctx.reply(
+      '🔍 <b>Введіть назву локації:</b>\n\n' +
+        '<b>Приклади:</b>\n' +
+        '• Київ\n' +
+        '• Одеса\n' +
+        '• Поділ\n' +
+        '• Жуляни\n' +
+        '• Бровари\n\n' +
+        '<i>Напишіть назву локації наступним повідомленням</i>',
+      { parse_mode: 'HTML' }
+    );
   }
 
   @Command(COMMAND.LIST_LOCATIONS)
@@ -84,8 +64,8 @@ export class UpdateProvider {
     if (locations.length === 0) {
       await ctx.reply(
         '📍 <b>У вас немає збережених локацій</b>\n\n' +
-          'Щоб додати локацію, скористайтесь командою:\n' +
-          '<code>/add_location назва_міста</code>',
+          'Щоб додати локацію, введіть команду:\n' +
+          '<code>/add_location</code>',
         { parse_mode: 'HTML' }
       );
       return;
@@ -119,12 +99,13 @@ export class UpdateProvider {
       '• <code>/start</code> - Почати роботу з ботом та зареєструватись\n' +
       '• <code>/help</code> - Показати це повідомлення з довідкою\n\n' +
       '📍 <b>Управління локаціями:</b>\n' +
-      '• <code>/add_location</code> [назва] - Додати локацію для моніторингу\n' +
+      '• <code>/add_location</code> - Додати локацію для моніторингу\n' +
       '• <code>/list_locations</code> - Переглянути всі збережені локації\n\n' +
-      '💡 <b>Приклади використання:</b>\n' +
-      '• <code>/add_location Київ</code>\n' +
-      '• <code>/add_location Одеса</code>\n' +
-      '• <code>/add_location Львів</code>\n\n' +
+      '💡 <b>Використання команди додавання локації:</b>\n' +
+      '1. Введіть <code>/add_location</code>\n' +
+      '2. Бот запитає назву локації\n' +
+      '3. Введіть назву (наприклад: Київ, Одеса, Львів)\n' +
+      '4. Локація буде додана до вашого списку\n\n' +
       '📝 <b>Примітки:</b>\n' +
       '• Назва локації має бути довжиною від 3 до 50 символів\n' +
       '• Можна використовувати українські літери, пробіли та дефіс\n' +
@@ -154,8 +135,8 @@ export class UpdateProvider {
       if (updatedLocations.length === 0) {
         await ctx.editMessageText(
           '📍 <b>У вас немає збережених локацій</b>\n\n' +
-            'Щоб додати локацію, скористайтесь командою:\n' +
-            '<code>/add_location назва_міста</code>',
+            'Щоб додати локацію, введіть команду:\n' +
+            '<code>/add_location</code>',
           { parse_mode: 'HTML' }
         );
       } else {
@@ -181,6 +162,61 @@ export class UpdateProvider {
       this.logger.error('Error deleting location:', error);
       await ctx.answerCbQuery('❌ Помилка при видаленні локації');
     }
+  }
+
+  @On('text')
+  async onText(@Ctx() ctx: Context) {
+    const userId = nonNull(ctx.from).id;
+    const userAddLocationCommandCache = await this.cacheManager.get(this.getUserAddLocationCommandCacheKey(userId));
+    if (ctx.text?.startsWith('/')) {
+      if (userAddLocationCommandCache) {
+        await this.cacheManager.del(this.getUserAddLocationCommandCacheKey(userId));
+      }
+      return;
+    }
+    if (!userAddLocationCommandCache) {
+      return;
+    }
+    const locationName = ctx.text?.trim();
+    if (!locationName) {
+      await ctx.reply(
+        '❌ <b>Помилка:</b> Назва локації не може бути порожньою.\n\n' + 'Будь ласка, введіть назву локації.',
+        { parse_mode: 'HTML' }
+      );
+      return;
+    }
+    await this.cacheManager.del(this.getUserAddLocationCommandCacheKey(userId));
+    await this.processLocationInput(ctx, locationName);
+  }
+
+  private async processLocationInput(@Ctx() ctx: Context, locationName: string): Promise<void> {
+    const userId = nonNull(ctx.from).id;
+    const validationResult = this.validateLocationName(locationName);
+    if (!validationResult.isValid) {
+      await ctx.reply(
+        `❌ <b>Помилка валідації:</b>\n\n` +
+          `${validationResult.error}\n\n` +
+          'Щоб спробувати ще раз, введіть команду <code>/add_location</code>.',
+        { parse_mode: 'HTML' }
+      );
+      return;
+    }
+    const isLimitExceeded = await this.locationService.isUserLocationLimitExceeded(userId);
+    if (isLimitExceeded) {
+      await ctx.reply('❌ Ви досягли ліміту на кількість збережених локацій');
+      return;
+    }
+    const existingLocation = await this.locationService.getLocationByName(locationName.toLowerCase());
+    if (existingLocation) {
+      await this.locationService.addLocationToUser(userId, existingLocation.id);
+      await ctx.reply(`✅ Локація "${_.capitalize(locationName)}" успішно додана до вашого списку`);
+      return;
+    }
+    const newLocation = await this.locationService.addLocation({
+      name: locationName.toLowerCase()
+    });
+    await this.locationService.addLocationToUser(userId, newLocation.id);
+    await ctx.reply(`✅ Локація "${_.capitalize(newLocation.name)}" успішно додана до вашого списку`);
   }
 
   private validateLocationName(locationName: string): { isValid: boolean; error?: string } {
@@ -225,5 +261,9 @@ export class UpdateProvider {
       return { isValid: false, error: 'Назва не може містити кілька дефісів підряд' };
     }
     return { isValid: true };
+  }
+
+  private getUserAddLocationCommandCacheKey(userId: number) {
+    return `${this.USER_ADD_LOCATION_COMMAND_CACHE_KEY}:${userId}`;
   }
 }

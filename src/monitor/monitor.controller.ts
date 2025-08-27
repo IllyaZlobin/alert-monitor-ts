@@ -23,12 +23,6 @@ export class MonitorController {
     return;
   }
 
-  @Get('cleanup')
-  async cleanupOldMessages() {
-    await this.monitorService.cleanupOldMessages();
-    return;
-  }
-
   @Get('stats')
   async getMessagesStats() {
     return this.messageService.getMessagesStats();

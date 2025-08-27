@@ -6,7 +6,7 @@ import { Queue } from 'bullmq';
 import { AppEnvironment } from '~/config';
 import { IConfig } from '~/config/types';
 import { Monitor } from '~/monitor/monitor';
-import { PARSING_SCHEDULER_QUEUE } from '~/queue/constants';
+import { MESSAGE_CLEANUP_QUEUE, PARSING_SCHEDULER_QUEUE } from '~/queue/constants';
 @Injectable()
 export class SchedulerService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(SchedulerService.name);
@@ -16,7 +16,8 @@ export class SchedulerService implements OnModuleInit, OnModuleDestroy {
   constructor(
     private readonly monitor: Monitor,
     private readonly configService: ConfigService<IConfig, true>,
-    @InjectQueue(PARSING_SCHEDULER_QUEUE.name) private readonly parsingQueue: Queue
+    @InjectQueue(PARSING_SCHEDULER_QUEUE.name) private readonly parsingQueue: Queue,
+    @InjectQueue(MESSAGE_CLEANUP_QUEUE.name) private readonly messageCleanupQueue: Queue
   ) {
     this.intervalSeconds = parseInt(process.env.PARSE_INTERVAL_SECONDS || '30'); // TODO use config
   }
@@ -28,6 +29,7 @@ export class SchedulerService implements OnModuleInit, OnModuleDestroy {
 
     if (shouldAutoStart) {
       await this.start();
+      await this.startMessageCleanup();
     } else {
       this.logger.log('Auto schedule running was disabled');
     }
@@ -60,6 +62,21 @@ export class SchedulerService implements OnModuleInit, OnModuleDestroy {
     this.logger.log('Schedule planner is running');
   }
 
+  async startMessageCleanup(): Promise<void> {
+    await this.messageCleanupQueue.add(
+      MESSAGE_CLEANUP_QUEUE.jobName,
+      {},
+      {
+        repeat: {
+          every: 1000 * 60 * 60 * 24 * 2 // every 2 days
+        },
+        removeOnComplete: 50,
+        removeOnFail: 10
+      }
+    );
+    this.logger.log('Message cleanup scheduler started');
+  }
+
   async stop(): Promise<void> {
     if (!this.isRunning) {
       return;
@@ -69,6 +86,10 @@ export class SchedulerService implements OnModuleInit, OnModuleDestroy {
       if (job.name.includes(PARSING_SCHEDULER_QUEUE.jobName)) {
         await this.parsingQueue.removeJobScheduler(job.key);
         this.logger.log(`Removed repeatable job: ${job.key}`);
+      }
+      if (job.name.includes(MESSAGE_CLEANUP_QUEUE.jobName)) {
+        await this.messageCleanupQueue.removeJobScheduler(job.key);
+        this.logger.log(`Removed message cleanup job: ${job.key}`);
       }
     }
     this.isRunning = false;
@@ -86,23 +107,11 @@ export class SchedulerService implements OnModuleInit, OnModuleDestroy {
       this.logger.log('Start parsing and processing messages...');
       const startTime = Date.now();
       await this.monitor.parseAndProcessMessages();
-      // TOOD Add new task to the queue for cleanup old messages
-      /* if (this.shouldCleanup()) {
-        await this.monitor.cleanupOldMessages();
-      } */
       const executionTime = Date.now() - startTime;
       this.logger.log(`Cycle completed in ${executionTime}ms`);
     } catch (error) {
       this.logger.error('Error executing scheduler cycle:', error);
       throw error;
     }
-  }
-
-  // TODO Need think about this solution
-  private shouldCleanup(): boolean {
-    const now = new Date();
-    const minutes = now.getMinutes();
-    // Execute cleanup when minutes are multiples of 10
-    return minutes % 10 === 0;
   }
 }

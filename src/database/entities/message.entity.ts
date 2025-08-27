@@ -35,11 +35,4 @@ export class MessageEntity {
 
   @CreateDateColumn({ type: 'timestamptz', name: 'created_at' })
   createdAt: Date;
-
-  @Column({
-    type: 'timestamptz',
-    name: 'expires_at',
-    default: () => "NOW() + INTERVAL '1 hour'"
-  })
-  expiresAt: Date;
 }

@@ -157,15 +157,4 @@ export class Monitor {
       throw error;
     }
   }
-
-  async cleanupOldMessages(): Promise<void> {
-    try {
-      const deletedCount = await this.messageService.cleanupOldMessages();
-      if (deletedCount > 0) {
-        this.logger.log(`Automatically deleted ${deletedCount} old messages`);
-      }
-    } catch (error) {
-      this.logger.error('Error cleaning up old messages:', error);
-    }
-  }
 }

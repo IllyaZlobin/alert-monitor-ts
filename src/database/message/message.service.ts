@@ -92,13 +92,28 @@ export class MessageService {
     await this.markAsProcessed([messageId]);
   }
 
-  async cleanupOldMessages(): Promise<number> {
-    const result = await this.messageRepository.createQueryBuilder().delete().where('expires_at < NOW()').execute();
-    const deletedCount = result.affected || 0;
-    if (deletedCount > 0) {
-      this.logger.log(`Deleted ${deletedCount} old messages`);
+  async cleanupOldMessages(): Promise<void> {
+    const maxMessage = await this.messageRepository.findOne({
+      select: ['telegramMessageId'],
+      order: { telegramMessageId: 'DESC' },
+      where: { processedAt: Not(IsNull()) }
+    });
+    if (!maxMessage) {
+      this.logger.log('No messages found for cleanup');
+      return;
     }
-    return deletedCount;
+    // Delete all messages except the one with the highest telegramMessageId
+    const result = await this.messageRepository
+      .createQueryBuilder()
+      .delete()
+      .where('telegram_message_id < :maxId', { maxId: maxMessage.telegramMessageId })
+      .andWhere('processed_at IS NOT NULL')
+      .execute();
+
+    if (result.affected && result.affected > 0) {
+      this.logger.log(`Deleted ${result.affected} old messages, kept message with ID ${maxMessage.telegramMessageId}`);
+    }
+    return;
   }
 
   /**

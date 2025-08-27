@@ -24,25 +24,24 @@ export class MessageService {
 
     try {
       const maxIncomingId = Math.max(...telegramMessages.map((msg) => msg.id));
+      const result = await this.messageRepository.query(
+        `
+        SELECT 
+          MAX(telegram_message_id) as max_existing,
+          EXISTS(SELECT 1 FROM messages WHERE telegram_message_id = $1) as has_max_incoming
+        FROM messages
+      `,
+        [maxIncomingId]
+      );
 
-      // TODO: Optimize to single query instead of two separate queries
-      /*Could use: SELECT MAX(telegram_message_id) as max_existing,
-                         EXISTS(SELECT 1 WHERE telegram_message_id = $1) as has_max_incoming
-      This would reduce DB roundtrips from 2 to 1, but impact is minimal since
-      this method runs only every 30 seconds */
-      const existingMaxMessage = await this.messageRepository.findOne({
-        where: { telegramMessageId: maxIncomingId }
-      });
-      if (existingMaxMessage) {
+      const { max_existing, has_max_incoming } = result[0] || { max_existing: null, has_max_incoming: false };
+
+      if (has_max_incoming) {
         this.logger.log('All messages are already up to date');
         return [];
       }
-      const [maxExistingMessage] = await this.messageRepository.find({
-        order: { telegramMessageId: 'DESC' },
-        select: ['telegramMessageId'],
-        take: 1
-      });
-      const maxExistingId = maxExistingMessage?.telegramMessageId || 0;
+
+      const maxExistingId = max_existing || 0;
       const newMessages = telegramMessages.filter((msg) => msg.id > maxExistingId);
       if (newMessages.length === 0) {
         this.logger.log('No new messages to save');

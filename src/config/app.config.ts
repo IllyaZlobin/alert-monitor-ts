@@ -12,7 +12,8 @@ export interface AppConfig {
   port: number;
   env: AppEnvironment;
   globalPrefix: string;
-  userLocationsLimit: 5;
+  userLocationsLimit: number;
+  parseIntervalSeconds: number;
 }
 
 export const appConfigSchema = {
@@ -20,12 +21,14 @@ export const appConfigSchema = {
   APP_ENV: Joi.string()
     .valid(...APP_ENVIRONMENTS)
     .required(),
-  APP_USER_LOCATION_LIMIT: Joi.number().integer().positive().required()
+  APP_USER_LOCATION_LIMIT: Joi.number().integer().positive().required(),
+  APP_PARSE_INTERVAL_SECONDS: Joi.number().integer().positive().required()
 };
 
 export const app = registerAs('app', () => ({
   port: process.env.APP_PORT,
   env: process.env.APP_ENV,
   userLocationsLimit: process.env.APP_USER_LOCATION_LIMIT,
+  parseIntervalSeconds: process.env.APP_PARSE_INTERVAL_SECONDS,
   globalPrefix: '/api'
 }));

@@ -137,6 +137,7 @@ jobs:
           APP_PORT=3000
           APP_ENV=production
           APP_USER_LOCATION_LIMIT=${{ secrets.APP_USER_LOCATION_LIMIT }}
+          APP_PARSE_INTERVAL_SECONDS=${{ secrets.APP_PARSE_INTERVAL_SECONDS }}
           NODE_ENV=production
           DATABASE_HOST=alert-monitor-postgres
           DATABASE_PORT=5432

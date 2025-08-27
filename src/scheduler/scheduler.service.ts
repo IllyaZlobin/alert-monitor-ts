@@ -19,7 +19,7 @@ export class SchedulerService implements OnModuleInit, OnModuleDestroy {
     @InjectQueue(PARSING_SCHEDULER_QUEUE.name) private readonly parsingQueue: Queue,
     @InjectQueue(MESSAGE_CLEANUP_QUEUE.name) private readonly messageCleanupQueue: Queue
   ) {
-    this.intervalSeconds = parseInt(process.env.PARSE_INTERVAL_SECONDS || '30'); // TODO use config
+    this.intervalSeconds = this.configService.get('app.parseIntervalSeconds', { infer: true });
   }
 
   async onModuleInit() {

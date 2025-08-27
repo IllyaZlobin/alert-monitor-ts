@@ -9,7 +9,8 @@ services:
       APP_PORT: ${APP_PORT:-3000}
       APP_ENV: ${APP_ENV:-production}
       APP_USER_LOCATION_LIMIT: ${APP_USER_LOCATION_LIMIT:-5}
-      
+      APP_PARSE_INTERVAL_SECONDS: ${APP_PARSE_INTERVAL_SECONDS:-30}
+
       DATABASE_HOST: alert-monitor-postgres
       DATABASE_PORT: 5432
       DATABASE_USERNAME: ${DATABASE_USERNAME:-postgres}

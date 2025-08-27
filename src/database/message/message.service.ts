@@ -116,30 +116,6 @@ export class MessageService {
   }
 
   /**
-   * Find messages with passed locations
-   */
-  async findMessagesWithLocations(locationNames: string[]): Promise<MessageEntity[]> {
-    if (locationNames.length === 0) {
-      return [];
-    }
-
-    // TODO: For very large location lists, consider using unnest() approach
-    /* Similar to findLocationsByMessageId but reversed:
-    SELECT m.* FROM messages m, unnest($1::text[]) AS loc
-    WHERE m.text_vector @@ plainto_tsquery('simple', loc) AND m.processed_at IS NULL */
-    const queryBuilder = this.messageRepository.createQueryBuilder('message');
-    const searchConditions = locationNames.map(
-      (_, index) => `message.text_vector @@ plainto_tsquery('simple', :location${index})`
-    );
-    queryBuilder.where(`(${searchConditions.join(' OR ')})`);
-    locationNames.forEach((location, index) => {
-      queryBuilder.setParameter(`location${index}`, location);
-    });
-    queryBuilder.andWhere('message.processedAt IS NULL').orderBy('message.createdAt', 'ASC');
-    return queryBuilder.getMany();
-  }
-
-  /**
    * Find locations that are mentioned in the message
    */
   async findLocationsByMessageId(messageId: string, locationNames: string[]): Promise<string[]> {

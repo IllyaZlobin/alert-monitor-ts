@@ -39,6 +39,7 @@ export class Monitor {
     this.httpService.axiosRef.defaults.headers.common = this.headers;
   }
 
+  // TODO: Think about using multiple public channels
   async getChannelMessages(): Promise<TelegramMessage[]> {
     try {
       const baseUrl = this.configService.get('telegram.publicAlertGroupUrl', {

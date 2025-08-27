@@ -4,7 +4,6 @@ import { Module } from '@nestjs/common';
 
 import { MessageModule } from '~/database/message/message.module';
 import { Monitor } from '~/monitor/monitor';
-import { MonitorController } from '~/monitor/monitor.controller';
 import { MESSAGE_PROCESSING_QUEUE } from '~/queue/constants';
 
 @Module({
@@ -15,7 +14,6 @@ import { MESSAGE_PROCESSING_QUEUE } from '~/queue/constants';
       name: MESSAGE_PROCESSING_QUEUE.name
     })
   ],
-  controllers: [MonitorController],
   providers: [Monitor],
   exports: [Monitor]
 })

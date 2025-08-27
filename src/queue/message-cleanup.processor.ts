@@ -1,6 +1,5 @@
 import { Processor, WorkerHost } from '@nestjs/bullmq';
 import { Logger } from '@nestjs/common';
-import { Job } from 'bullmq';
 
 import { MessageService } from '~/database/message/message.service';
 import { MESSAGE_CLEANUP_QUEUE } from '~/queue/constants';
@@ -13,7 +12,7 @@ export class MessageCleanupProcessor extends WorkerHost {
     super();
   }
 
-  async process(job: Job): Promise<void> {
+  async process(): Promise<void> {
     this.logger.log('Cleaning up old messages');
     await this.messageService.cleanupOldMessages();
     this.logger.log('Old messages cleaned up');
